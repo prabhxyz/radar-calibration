@@ -13,13 +13,16 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Round the time to the nearest minute
 def round_time(time_str):
-    time_obj = datetime.strptime(time_str, '%d %b %Y %H:%M:%S.%f')
+    # Remove any trailing characters after the seconds part
+    time_str = time_str.split('.')[0]
+    time_obj = datetime.strptime(time_str, '%d %b %Y %H:%M:%S')
     rounded_time = time_obj.replace(second=0, microsecond=0) + timedelta(seconds=30)
     rounded_time -= timedelta(minutes=rounded_time.minute % 1, seconds=rounded_time.second)
     return rounded_time.strftime('%d %b %Y %H:%M:%S.%f')[:-3]
 
+
 # Process each input file
-for filename in ['CR_AER.csv', 'TP_AER.csv', 'WS_AER.csv']:
+for filename in ['CR_AER.csv', 'TP_AER.csv', 'WS_AER.csv', 'MS_AER.csv']:
     input_file = os.path.join(input_dir, filename)
     output_file = os.path.join(output_dir, f'rounded_{filename}')
 

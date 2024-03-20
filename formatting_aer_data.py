@@ -29,6 +29,7 @@ def remove_chunks(filename):
     return new_filename
 
 # Format the .csv files
-remove_chunks('aer_data/CR_AER.csv')
-remove_chunks('aer_data/TP_AER.csv')
-remove_chunks('aer_data/WS_AER.csv')
+#remove_chunks('aer_data/CR_AER.csv')
+#remove_chunks('aer_data/TP_AER.csv')
+#remove_chunks('aer_data/WS_AER.csv')
+remove_chunks('aer_data/MS_AER.csv')

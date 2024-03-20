@@ -11,9 +11,10 @@ output_file = 'aer_data/combined_aer_data.csv'
 file1_data = []
 file2_data = []
 file3_data = []
+file4_data = []
 
 # Read the data from each input file
-for i, filename in enumerate(['rounded_CR_AER.csv', 'rounded_TP_AER.csv', 'rounded_WS_AER.csv'], start=1):
+for i, filename in enumerate(['rounded_CR_AER.csv', 'rounded_TP_AER.csv', 'rounded_WS_AER.csv', 'rounded_MS_AER.csv'], start=1):
     filepath = os.path.join(input_dir, filename)
     with open(filepath, 'r') as f:
         reader = csv.reader(f)
@@ -23,17 +24,19 @@ for i, filename in enumerate(['rounded_CR_AER.csv', 'rounded_TP_AER.csv', 'round
             file1_data = data
         elif i == 2:
             file2_data = data
-        else:
+        elif i == 3:
             file3_data = data
+        else:
+            file4_data = data
 
 # Find the maximum number of rows across all input files
-max_rows = max(len(file1_data), len(file2_data), len(file3_data))
+max_rows = max(len(file1_data), len(file2_data), len(file3_data), len(file4_data))
 
 # Write the combined data to the output file
 with open(output_file, 'w', newline='') as f:
     writer = csv.writer(f)
     # Write the header row
-    header = ['Time (UTCG)', 'azimuth_1', 'elevation_1', 'range_1', 'azimuth_2', 'elevation_2', 'range_2', 'azimuth_3', 'elevation_3', 'range_3']
+    header = ['Time (UTCG)', 'azimuth_1', 'elevation_1', 'range_1', 'azimuth_2', 'elevation_2', 'range_2', 'azimuth_3', 'elevation_3', 'range_3', 'azimuth_4', 'elevation_4', 'range_4']
     writer.writerow(header)
 
     # Write the data rows
@@ -52,6 +55,11 @@ with open(output_file, 'w', newline='') as f:
 
         if i < len(file3_data):
             row.extend(file3_data[i][1:])  # Azimuth, Elevation, Range from file3
+        else:
+            row.extend([''] * 3)  # Fill with empty strings if row doesn't exist
+
+        if i < len(file4_data):
+            row.extend(file4_data[i][1:])  # Azimuth, Elevation, Range from file4
         else:
             row.extend([''] * 3)  # Fill with empty strings if row doesn't exist
 
