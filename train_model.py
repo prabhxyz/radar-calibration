@@ -34,4 +34,4 @@ mse = model.evaluate(X_test, y_test)
 print('Mean Squared Error:', mse)
 
 # Save the trained model for future use
-model.save('radar_calibration_model.h5')
+model.save('models/radar_calibration_model.h5')

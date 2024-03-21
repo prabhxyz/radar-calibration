@@ -16,7 +16,7 @@ example_input = pd.DataFrame({
 })
 
 # Load the trained model
-model = load_model('radar_calibration_model.h5')
+model = load_model('models/radar_calibration_model.h5')
 
 # Normalize the example input (if necessary)
 # example_input_normalized = (example_input - X_train.mean()) / X_train.std()
