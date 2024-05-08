@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 import torch
 
 # Load the dataset
-data = pd.read_csv('aer_data/combined_aer_data.csv')
+data = pd.read_csv('aer_data/standardized_aer_data.csv')
 
 # Split data into features (X) and target variable (y)
 X = data[['azimuth_1', 'elevation_1', 'range_1',
@@ -34,4 +34,4 @@ tabnet_model = TabNetRegressor()
 tabnet_model.fit(X_train_scaled, y_train, eval_set=[(X_test_scaled, y_test)], patience=10, max_epochs=100)
 
 # Save the trained model
-torch.save(tabnet_model, 'models/radar_calibration_model.pt')
+torch.save(tabnet_model, 'models/new_radar_calibration_model.pt')

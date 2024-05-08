@@ -1,70 +1,95 @@
 import csv
-import os
+import numpy as np
+from math import radians, cos, sin, atan2, sqrt
 
-# Specify the directory where the input CSV files are located
-input_dir = 'aer_data/rounded_times'
+# Function to convert latitude and longitude to ECEF coordinates
+def geodetic_to_ecef(lat, lon, alt):
+    a = 6378137.0  # Earth radius in meters
+    f = 1 / 298.257223563  # Earth flattening
+    e2 = 2*f - f**2  # Square of eccentricity
 
-# Specify the output file name and path
-output_file = 'aer_data/combined_aer_data.csv'
+    lat_rad = radians(lat)
+    lon_rad = radians(lon)
 
-# Initialize lists to hold the data from each file
-file1_data = []
-file2_data = []
-file3_data = []
-file4_data = []
+    N = a / sqrt(1 - e2 * sin(lat_rad)**2)
 
-# Read the data from each input file
-for i, filename in enumerate(['rounded_CR_AER.csv', 'rounded_TP_AER.csv', 'rounded_WS_AER.csv', 'rounded_MS_AER.csv'], start=1):
-    filepath = os.path.join(input_dir, filename)
-    with open(filepath, 'r') as f:
-        reader = csv.reader(f)
-        next(reader)  # Skip the header row
-        data = [row for row in reader]
-        if i == 1:
-            file1_data = data
-        elif i == 2:
-            file2_data = data
-        elif i == 3:
-            file3_data = data
-        else:
-            file4_data = data
+    x = (N + alt) * cos(lat_rad) * cos(lon_rad)
+    y = (N + alt) * cos(lat_rad) * sin(lon_rad)
+    z = (N * (1 - e2) + alt) * sin(lat_rad)
 
-# Find the maximum number of rows across all input files
-max_rows = max(len(file1_data), len(file2_data), len(file3_data), len(file4_data))
+    return x, y, z
 
-# Write the combined data to the output file
-with open(output_file, 'w', newline='') as f:
-    writer = csv.writer(f)
-    # Write the header row
-    header = ['Time (UTCG)', 'azimuth_1', 'elevation_1', 'range_1', 'azimuth_2', 'elevation_2', 'range_2', 'azimuth_3', 'elevation_3', 'range_3', 'azimuth_4', 'elevation_4', 'range_4']
-    writer.writerow(header)
+# Function to convert AER to Cartesian coordinates
+def aer_to_cartesian(azimuth, elevation, range):
+    az_rad = radians(azimuth)
+    el_rad = radians(elevation)
 
-    # Write the data rows
-    for i in range(max_rows):
-        row = []
-        if i < len(file1_data):
-            row.extend([file1_data[i][0]])  # Time (UTCG) from file1
-            row.extend(file1_data[i][1:])  # Azimuth, Elevation, Range from file1
-        else:
-            row.extend([''] * 4)  # Fill with empty strings if row doesn't exist
+    x = range * cos(el_rad) * sin(az_rad)
+    y = range * cos(el_rad) * cos(az_rad)
+    z = range * sin(el_rad)
 
-        if i < len(file2_data):
-            row.extend(file2_data[i][1:])  # Azimuth, Elevation, Range from file2
-        else:
-            row.extend([''] * 3)  # Fill with empty strings if row doesn't exist
+    return x, y, z
 
-        if i < len(file3_data):
-            row.extend(file3_data[i][1:])  # Azimuth, Elevation, Range from file3
-        else:
-            row.extend([''] * 3)  # Fill with empty strings if row doesn't exist
+# Function to convert Cartesian coordinates to AER
+def cartesian_to_aer(x, y, z):
+    range_ = sqrt(x**2 + y**2 + z**2)
+    elevation = atan2(z, sqrt(x**2 + y**2))
+    azimuth = atan2(x, y)
+    return np.degrees(azimuth), np.degrees(elevation), range_
 
-        if i < len(file4_data):
-            row.extend(file4_data[i][1:])  # Azimuth, Elevation, Range from file4
-        else:
-            row.extend([''] * 3)  # Fill with empty strings if row doesn't exist
+# Function to standardize AER data based on ground station location
+def standardize_aer(aer_data, station_lat, station_lon):
+    station_x, station_y, station_z = geodetic_to_ecef(station_lat, station_lon, 0)
+    standardized_data = []
+    for azimuth, elevation, range_ in aer_data:
+        x, y, z = aer_to_cartesian(azimuth, elevation, range_)
+        # Translate Cartesian coordinates to station's location
+        x -= station_x
+        y -= station_y
+        z -= station_z
+        # Convert back to AER
+        standardized_data.append(cartesian_to_aer(x, y, z))
+    return standardized_data
 
-        # Write the row only if it doesn't contain any empty columns
-        if '' not in row:
-            writer.writerow(row)
+# Function to read the input CSV file and write the output CSV file
+def process_aer_data(input_file, output_file):
+    with open(input_file, 'r') as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        fieldnames_standardized = fieldnames[1:]  # Remove '_std' suffix
+        fieldnames_all = [fieldnames[0]] + fieldnames_standardized
 
-print(f"Combined data written to {output_file}")
+        with open(output_file, 'w', newline='') as fout:
+            writer = csv.DictWriter(fout, fieldnames=fieldnames_all)
+            writer.writeheader()
+
+            for row in reader:
+                # Define ground station coordinates
+                station_coordinates = [
+                    (39.2768, -104.807),  # Ground Station 1
+                    (34.583, -120.561),   # Ground Station 2
+                    (33.8131, -106.659),  # Ground Station 3
+                    (35.891, -110.676)    # Ground Station 4 (assuming sea level)
+                ]
+
+                # Standardize AER data for each ground station
+                standardized_data = []
+                for key in row.keys():
+                    if key.startswith('azimuth'):
+                        i = int(key.split('_')[-1])
+                        aer_data = [float(row[f'azimuth_{i}']), float(row[f'elevation_{i}']), float(row[f'range_{i}'])]
+                        lat, lon = station_coordinates[i - 1]  # Index adjustment for station_coordinates
+                        standardized_data.extend(standardize_aer([aer_data], lat, lon)[0])
+
+                # Write standardized data to output file
+                output_row = {field: value for field, value in zip(fieldnames_all, row.values())}
+                for field, value in zip(fieldnames_standardized, standardized_data):
+                    output_row[field] = value
+                writer.writerow(output_row)
+
+# Input and output file paths
+input_file = 'aer_data/combined_aer_data.csv'
+output_file = 'aer_data/standardized_aer_data.csv'
+
+# Process AER data and write to output file
+process_aer_data(input_file, output_file)
